@@ -18,3 +18,5 @@ class RedisQueue(metaclass=Singleton):
         item = self.redis_client.rpop(queue_name)
         return item.decode('utf-8') if item else None
 
+    def count(self, queue_name):
+        return self.redis_client.llen(queue_name)

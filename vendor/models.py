@@ -1,6 +1,7 @@
 # vendor/models.py
 from django.db import models
 from agent.models import Agent
+
 class Vendor(models.Model):
     name = models.CharField(max_length=100)
 

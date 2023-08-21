@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 import requests
-from django.db.models import Count, Sum
+from django.db.models import OuterRef, Subquery, Count, Sum, Q
 from .models import Order, Trip, DelayReport, Vendor
 from redis_utils import RedisQueue
 from datetime import datetime, timedelta
@@ -47,17 +47,21 @@ def report_delay(request, order_id):
 
         return JsonResponse({'message': 'Order put in delay queue'})
 
-def weekly_vendors_by_delay(request):
+def vendors(request):
     # Calculate the start and end date for the past week
     end_date = datetime.now().date()
     start_date = end_date - timedelta(days=7)
 
+    # Subquery to get the total delays for each order of a vendor in the past week
+    total_delays_subquery = DelayReport.objects.filter(
+        order=OuterRef('order'),
+        time_stamp__range=(start_date, end_date)
+    ).values('order').annotate(total_delays=Sum('order__delayreport__time_stamp')).values('total_delays')
+
     # Get vendors with their total delays in the past week
     vendors = Vendor.objects.annotate(
-        total_delays=Sum('order__trip__delayreport__order__time_stamp__range', 
-                            filter=models.Q(order__trip__delayreport__time_stamp__range=(start_date, end_date)),
-                            distinct=True)
-        ).order_by('-total_delays')
+        total_delays=Subquery(total_delays_subquery)
+    ).order_by('-total_delays')
     
     serializer = VendorSerializer(vendors, many=True)
     return Response(serializer.data)

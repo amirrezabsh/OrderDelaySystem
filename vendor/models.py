@@ -22,4 +22,5 @@ class Trip(models.Model):
 
 
 class DelayReport(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, null=False, blank=False)
+    time_stamp = models.DateTimeField(auto_now_add=True)

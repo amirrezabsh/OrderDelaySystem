@@ -21,5 +21,5 @@ class RedisQueue(metaclass=Singleton):
     def count(self, queue_name):
         return self.redis_client.llen(queue_name)
     
-    def lpos(self, queue_name, item):
-        return self.redis_client.lpos(queue_name, item)
+    def exists(self, queue_name, item):
+        return self.redis_client.exists(queue_name, item)

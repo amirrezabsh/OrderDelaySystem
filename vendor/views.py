@@ -12,6 +12,7 @@ from django.utils import timezone
 
 # Get the singleton instance of DelaysQueue
 delays_queue = RedisQueue()
+queue_name = 'delays'
 
 @api_view(['GET'])
 def report_delay(request, order_id):
@@ -23,6 +24,14 @@ def report_delay(request, order_id):
     current_time = timezone.now()
     if order.delivery_time + order.time_stamp > current_time:
         return JsonResponse({'message': 'Cannot report delay before the estimated delivery time has passed'}, status=400)
+    
+    
+    delayed_order_ids = DelayReport.objects.filter(order=order, agent=None).values_list('id', flat=True)
+    if delayed_order_ids:
+        exists_in_queue = delays_queue.exists(queue_name, *delayed_order_ids)
+        if exists_in_queue:
+            return JsonResponse({'message': 'The order is already in the waiting queue'}, status=400)
+
 
     # Check if there's a related trip with the order
     if Trip.objects.filter(status__in=['VENDOR_AT', 'ASSIGNED', 'PICKED'],order=order).exists():
@@ -51,7 +60,7 @@ def report_delay(request, order_id):
         report.save()
 
         # Enqueue the delay report to the delays_queue
-        delays_queue.enqueue('delays', report)
+        delays_queue.enqueue(queue_name, report.id)
 
         return JsonResponse({'message': 'Order put in delay queue'})
     

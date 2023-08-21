@@ -1,8 +1,12 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 import requests
-from .models import Order, Trip, DelayReport
-from OrderDelaySystem.redis_utils import RedisQueue
+from django.db.models import Count, Sum
+from .models import Order, Trip, DelayReport, Vendor
+from redis_utils import RedisQueue
+from datetime import datetime, timedelta
+from .serializers import VendorSerializer
+from rest_framework.response import Response
 
 # Get the singleton instance of DelaysQueue
 delays_queue = RedisQueue()
@@ -42,3 +46,18 @@ def report_delay(request, order_id):
         delays_queue.enqueue('delays', report.id)
 
         return JsonResponse({'message': 'Order put in delay queue'})
+
+def weekly_vendors_by_delay(request):
+    # Calculate the start and end date for the past week
+    end_date = datetime.now().date()
+    start_date = end_date - timedelta(days=7)
+
+    # Get vendors with their total delays in the past week
+    vendors = Vendor.objects.annotate(
+        total_delays=Sum('order__trip__delayreport__order__time_stamp__range', 
+                            filter=models.Q(order__trip__delayreport__time_stamp__range=(start_date, end_date)),
+                            distinct=True)
+        ).order_by('-total_delays')
+    
+    serializer = VendorSerializer(vendors, many=True)
+    return Response(serializer.data)

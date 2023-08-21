@@ -1,8 +1,8 @@
 from django.shortcuts import render
 from .models import Agent
 from django.http import JsonResponse
-from OrderDelaySystem.redis_utils import RedisQueue
-from ..vendor.models import DelayReport
+from redis_utils import RedisQueue
+from vendor.models import DelayReport
 # Get the singleton instance of DelaysQueue
 delays_queue = RedisQueue()
 delays_queue_name = 'delays'

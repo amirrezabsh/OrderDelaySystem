@@ -7,7 +7,7 @@ class Vendor(models.Model):
 
 class Order(models.Model):
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE,blank=False,null=False)
-    delivery_time = models.IntegerField(blank=False,null=False)
+    delivery_time = models.TimeField(blank=False,null=False)
     time_stamp = models.DateTimeField(auto_now_add=True)
 
 class Trip(models.Model):

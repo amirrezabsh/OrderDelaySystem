@@ -19,6 +19,8 @@ def assign_report(request,agent_id):
         return JsonResponse({'message':'Delays report queue is empty'}, status=200)
     try:
         report = DelayReport.objects.get(id=delays_queue.dequeue(delays_queue_name))
+        if report.agent is not None:
+            return JsonResponse({'message':'The report is already assigned to an agent'},status=400)
         report.agent = agent
         report.save()
     except DelayReport.DoesNotExist:

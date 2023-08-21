@@ -23,7 +23,7 @@ def report_delay(request, order_id):
     
     current_time = timezone.now()
     if order.delivery_time + order.time_stamp > current_time:
-        return JsonResponse({'message': 'Cannot report delay before the estimated delivery time has passed'}, status=400)
+        return JsonResponse({'message': 'Cannot report delay before the estimated delivery time has passed','time':timezone.now()}, status=400)
     
 
     delayed_order_ids = DelayReport.objects.filter(order=order, agent=None, is_checked=False).values_list('id', flat=True)
@@ -72,19 +72,22 @@ def weekly_vendors(request):
 
     # Subquery to calculate the maximum delay duration for each order of a vendor in the past week
     total_delays_subquery = DelayReport.objects.filter(
-        order__time_stamp__range=(start_date, end_date)
+        order__time_stamp__range=(start_date, end_date),
+        order__delayreport__isnull=False
     ).annotate(
         total_delay=ExpressionWrapper(
             F('time_stamp') - (F('order__time_stamp') + F('order__delivery_time')),
             output_field=DurationField()
         )
-    ).values('order').annotate(max_total_delay=Max('total_delay')).values('max_total_delay')
+    ).values('order__vendor').annotate(max_total_delay=Max('total_delay')).values('max_total_delay')
 
     # Get vendors with their maximum delays in the past week
-    vendors = Vendor.objects.annotate(
+    vendors = Vendor.objects.filter(
+        order__delayreport__isnull=False
+    ).annotate(
         max_total_delay=Subquery(total_delays_subquery)
     ).order_by('-max_total_delay')
     
     serializer = VendorSerializer(vendors, many=True)
 
-    return JsonResponse({'message':'Succesfull','data':serializer.data},status=200)
+    return JsonResponse({'message': 'Successful', 'data': serializer.data}, status=200)

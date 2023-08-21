@@ -14,7 +14,7 @@ class Order(models.Model):
     time_stamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:
-        return f"{self.vendor}: {self.time_stamp}"
+        return f"{self.vendor} due time: {self.time_stamp + self.delivery_time} with id {self.id}"
 
 class Trip(models.Model):
     STATUS_CHOICES = [

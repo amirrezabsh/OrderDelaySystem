@@ -1,22 +1,29 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 import requests
-from django.db.models import OuterRef, Subquery, Count, Sum, Q
+from django.db.models import OuterRef, Subquery, Count, Sum, Q, ExpressionWrapper, DurationField, F
 from .models import Order, Trip, DelayReport, Vendor
 from redis_utils import RedisQueue
 from datetime import datetime, timedelta
 from .serializers import VendorSerializer
 from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from django.utils import timezone
 
 # Get the singleton instance of DelaysQueue
 delays_queue = RedisQueue()
 
+@api_view(['GET'])
 def report_delay(request, order_id):
     try:
         order = Order.objects.get(id=order_id)
     except Order.DoesNotExist:
         return JsonResponse({'message': 'Order not found'}, status=404)
     
+    current_time = timezone.now()
+    if order.delivery_time + order.time_stamp > current_time:
+        return JsonResponse({'message': 'Cannot report delay before the estimated delivery time has passed'}, status=400)
+
     # Check if there's a related trip with the order
     if Trip.objects.filter(status__in=['VENDOR_AT', 'ASSIGNED', 'PICKED'],order=order).exists():
 
@@ -43,20 +50,26 @@ def report_delay(request, order_id):
         report = DelayReport(order=order)
         report.save()
 
-        delays_queue.enqueue('delays', report.id)
+        # Enqueue the delay report to the delays_queue
+        delays_queue.enqueue('delays', report)
 
         return JsonResponse({'message': 'Order put in delay queue'})
-
+    
+@api_view(['GET'])
 def vendors(request):
     # Calculate the start and end date for the past week
-    end_date = datetime.now().date()
+    end_date = timezone.now().date()
     start_date = end_date - timedelta(days=7)
 
-    # Subquery to get the total delays for each order of a vendor in the past week
+    # Subquery to calculate the total delays for each order of a vendor in the past week
     total_delays_subquery = DelayReport.objects.filter(
-        order=OuterRef('order'),
-        time_stamp__range=(start_date, end_date)
-    ).values('order').annotate(total_delays=Sum('order__delayreport__time_stamp')).values('total_delays')
+        order__time_stamp__range=(start_date, end_date)
+    ).annotate(
+        total_delay=ExpressionWrapper(
+            F('time_stamp') - F('order__time_stamp') - F('order__delivery_time'),
+            output_field=DurationField()
+        )
+    ).values('order__vendor').annotate(total_delays=Sum('total_delay')).values('total_delays')
 
     # Get vendors with their total delays in the past week
     vendors = Vendor.objects.annotate(
@@ -64,4 +77,4 @@ def vendors(request):
     ).order_by('-total_delays')
     
     serializer = VendorSerializer(vendors, many=True)
-    return Response(serializer.data)
+    return JsonResponse({'message':'Succesfull','data':serializer.data},status=200)

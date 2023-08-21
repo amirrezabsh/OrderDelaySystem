@@ -3,11 +3,13 @@ from .models import Agent
 from django.http import JsonResponse
 from redis_utils import RedisQueue
 from vendor.models import DelayReport
+from rest_framework.decorators import api_view
 # Get the singleton instance of DelaysQueue
 delays_queue = RedisQueue()
 delays_queue_name = 'delays'
 # Create your views here.
 
+@api_view(['GET'])
 def assign_report(request,agent_id):
     try:
         agent = Agent.objects.get(id=agent_id)

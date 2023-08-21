@@ -7,7 +7,7 @@ class Singleton(type):
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
     
-class DelaysQueue(metaclass=Singleton):
+class RedisQueue(metaclass=Singleton):
     def __init__(self, host='localhost', port=6379, db=0):
         self.redis_client = redis.Redis(host=host, port=port, db=db)
 

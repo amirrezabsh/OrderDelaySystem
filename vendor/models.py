@@ -1,6 +1,6 @@
 # vendor/models.py
 from django.db import models
-
+from ..agent.models import Agent
 class Vendor(models.Model):
     name = models.CharField(max_length=100)
 
@@ -23,4 +23,5 @@ class Trip(models.Model):
 
 class DelayReport(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, null=False, blank=False)
+    agent = models.ForeignKey(Agent, blank=True, null=True)
     time_stamp = models.DateTimeField(auto_now_add=True)

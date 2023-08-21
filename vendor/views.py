@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 import requests
-from django.db.models import OuterRef, Subquery, Count, Sum, Q, ExpressionWrapper, DurationField, F
+from django.db.models import OuterRef, Subquery, Count, Sum, Q, ExpressionWrapper, DurationField, F, Max
 from .models import Order, Trip, DelayReport, Vendor
 from redis_utils import RedisQueue
 from datetime import datetime, timedelta
@@ -25,8 +25,8 @@ def report_delay(request, order_id):
     if order.delivery_time + order.time_stamp > current_time:
         return JsonResponse({'message': 'Cannot report delay before the estimated delivery time has passed'}, status=400)
     
-    
-    delayed_order_ids = DelayReport.objects.filter(order=order, agent=None).values_list('id', flat=True)
+
+    delayed_order_ids = DelayReport.objects.filter(order=order, agent=None, is_checked=False).values_list('id', flat=True)
     if delayed_order_ids:
         exists_in_queue = delays_queue.exists(queue_name, *delayed_order_ids)
         if exists_in_queue:
@@ -65,25 +65,26 @@ def report_delay(request, order_id):
         return JsonResponse({'message': 'Order put in delay queue'})
     
 @api_view(['GET'])
-def vendors(request):
+def weekly_vendors(request):
     # Calculate the start and end date for the past week
     end_date = timezone.now().date()
     start_date = end_date - timedelta(days=7)
 
-    # Subquery to calculate the total delays for each order of a vendor in the past week
+    # Subquery to calculate the maximum delay duration for each order of a vendor in the past week
     total_delays_subquery = DelayReport.objects.filter(
         order__time_stamp__range=(start_date, end_date)
     ).annotate(
         total_delay=ExpressionWrapper(
-            F('time_stamp') - F('order__time_stamp') - F('order__delivery_time'),
+            F('time_stamp') - (F('order__time_stamp') + F('order__delivery_time')),
             output_field=DurationField()
         )
-    ).values('order__vendor').annotate(total_delays=Sum('total_delay')).values('total_delays')
+    ).values('order').annotate(max_total_delay=Max('total_delay')).values('max_total_delay')
 
-    # Get vendors with their total delays in the past week
+    # Get vendors with their maximum delays in the past week
     vendors = Vendor.objects.annotate(
-        total_delays=Subquery(total_delays_subquery)
-    ).order_by('-total_delays')
+        max_total_delay=Subquery(total_delays_subquery)
+    ).order_by('-max_total_delay')
     
     serializer = VendorSerializer(vendors, many=True)
+
     return JsonResponse({'message':'Succesfull','data':serializer.data},status=200)

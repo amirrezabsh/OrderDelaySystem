@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     'vendor',
     'agent'
 ]
-
+REDIS_UTILS_MODULE = 'OrderDelaySystem.redis_utils'
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

@@ -6,8 +6,8 @@ class Vendor(models.Model):
     name = models.CharField(max_length=100)
 
 class Order(models.Model):
-    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE)
-    delivery_time = models.TimeField()
+    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE,blank=False,null=False)
+    delivery_time = models.IntegerField(blank=False,null=False)
     time_stamp = models.DateTimeField(auto_now_add=True)
 
 class Trip(models.Model):
@@ -18,7 +18,7 @@ class Trip(models.Model):
         ('ASSIGNED', 'Assigned'),
     ]
     
-    order = models.OneToOneField(Order, on_delete=models.CASCADE, unique=True)
+    order = models.OneToOneField(Order, on_delete=models.CASCADE)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES)
 
 

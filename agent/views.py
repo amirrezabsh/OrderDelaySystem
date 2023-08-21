@@ -9,19 +9,25 @@ delays_queue = RedisQueue()
 delays_queue_name = 'delays'
 # Create your views here.
 
+
 @api_view(['GET'])
-def assign_report(request,agent_id):
+def assign_report(request, agent_id):
     try:
         agent = Agent.objects.get(id=agent_id)
     except Agent.DoesNotExist:
-        return JsonResponse({'message':'No such agent exists'},status=404)
+        return JsonResponse({'message': 'No such agent exists'}, status=404)
     if delays_queue.count(delays_queue_name) == 0:
-        return JsonResponse({'message':'Delays report queue is empty'}, status=200)
+        return JsonResponse({'message': 'Delays report queue is empty'}, status=200)
+
+    if DelayReport.objects.exists(agent=agent, is_checked=False):
+        return JsonResponse({'message':'The agent has already been assigned by a report'},status=400)
     try:
-        report = DelayReport.objects.get(id=delays_queue.dequeue(delays_queue_name))
+        report = DelayReport.objects.get(
+            id=delays_queue.dequeue(delays_queue_name))
+            
         if report.agent is not None:
-            return JsonResponse({'message':'The report is already assigned to an agent'},status=400)
+            return JsonResponse({'message': 'The report is already assigned to an agent'}, status=400)
         report.agent = agent
         report.save()
     except DelayReport.DoesNotExist:
-        return JsonResponse({'message':'No such report exists'},status=500)
+        return JsonResponse({'message': 'No such report exists'}, status=500)

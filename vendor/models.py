@@ -23,6 +23,13 @@ class Trip(models.Model):
 
 
 class DelayReport(models.Model):
+    STATUS_CHOICES = [
+        ('CHECKED', 'Checked'),
+        ('NOT_ASSIGNED', 'Not Assigned'),
+        ('ASSIGNED', 'Assigned'),
+    ]
+        
     order = models.ForeignKey(Order, on_delete=models.CASCADE, null=False, blank=False)
     agent = models.ForeignKey(Agent, on_delete=models.PROTECT, blank=True, null=True)
+    is_checked = models.BooleanField(default=False)
     time_stamp = models.DateTimeField(auto_now_add=True)

@@ -59,24 +59,32 @@ def report_delay(request, order_id):
             order.status = 'DELAYED'
             order.save()
 
-        # Enqueue the delayed order to the delays_queue
-        delays_queue.enqueue(queue_name, order.id)
+            # Enqueue the delayed order to the delays_queue
+            delays_queue.enqueue(queue_name, order.id)
 
-        return JsonResponse({'message': 'Order put in delay queue'})
+            return JsonResponse({'message': 'Order put in delay queue'})
+        return JsonResponse({'message':'Your delay report has been submitted'})
     
 @api_view(['GET'])
 def weekly_vendors(request):
     seven_days_ago = timezone.now() - timedelta(days=7)
-
+    delay = DelayReport.objects.get(id=26)
+    print((delay.time_stamp - delay.order.time_stamp).total_seconds())
     orders = Order.objects.filter(
         time_stamp__gte=seven_days_ago
     ).annotate(
-        delay_minutes=ExpressionWrapper(
-            Max(F('delayreport__time_stamp') - (F('time_stamp') + F('delivery_time'))),
-            output_field=FloatField()
-        )
-    ).values('id', 'vendor__name', 'delay_minutes') 
-
+        max_delay=ExpressionWrapper(
+            Max(F('delayreport__time_stamp')),output_field=DateTimeField()),
+        
+        ).annotate(
+        delay_duration=ExpressionWrapper(
+        (F('max_delay') - F('time_stamp'))/60000000 - F('delivery_time'), output_field=FloatField()
+        )).values('id','time_stamp','max_delay','delay_duration').order_by('delay_duration')#.annotate(
+        # delay_duration=ExpressionWrapper( 
+        # F('delay_duration') - F('delivery_time'), output_field=DurationField()
+        # )).values('id','time_stamp','max_delay','delay_duration').order_by('delay_duration')
+ 
+    print(orders)
     return JsonResponse({'orders': list(orders)})
 
 

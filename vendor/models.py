@@ -1,7 +1,6 @@
 # vendor/models.py
 from django.db import models
 from datetime import timedelta
-from agent.models import Agent
 from django.utils import timezone
 
 

@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 import requests
-from django.db.models import OuterRef, Subquery, Count, Sum, Q, ExpressionWrapper, DurationField, F, Max
+from django.db.models import OuterRef, Subquery, Count, Sum, DecimalField, Q, ExpressionWrapper, IntegerField, DurationField, F, Max, FloatField, DateTimeField
 from .models import Order, Trip, DelayReport, Vendor
 from redis_utils import RedisQueue
 from datetime import datetime, timedelta
@@ -9,7 +9,7 @@ from .serializers import VendorSerializer
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from django.utils import timezone
-
+from django.db.models.functions import Cast, Coalesce
 # Get the singleton instance of DelaysQueue
 delays_queue = RedisQueue()
 queue_name = 'delays'
@@ -22,16 +22,12 @@ def report_delay(request, order_id):
         return JsonResponse({'message': 'Order not found'}, status=404)
     
     current_time = timezone.now()
-    if order.delivery_time + order.time_stamp > current_time:
+    if timedelta(minutes=order.delivery_time) + order.time_stamp > current_time:
         return JsonResponse({'message': 'Cannot report delay before the estimated delivery time has passed','time':timezone.now()}, status=400)
-    
 
-    delayed_order_ids = DelayReport.objects.filter(order=order, agent=None, is_checked=False).values_list('id', flat=True)
-    if delayed_order_ids:
-        exists_in_queue = delays_queue.exists(queue_name, *delayed_order_ids)
-        if exists_in_queue:
-            return JsonResponse({'message': 'The order is already in the waiting queue'}, status=400)
-
+    exists_in_queue = delays_queue.exists(queue_name, order_id)
+    if exists_in_queue == order.id: 
+        return JsonResponse({'message': 'The order is already in the delay queue'}, status=400)
 
     # Check if there's a related trip with the order
     if Trip.objects.filter(status__in=['VENDOR_AT', 'ASSIGNED', 'PICKED'],order=order).exists():
@@ -42,14 +38,14 @@ def report_delay(request, order_id):
             new_estimated_delivery = response.json().get('data').get('eta')
 
             # Update the order with the new estimated delivery time
-            order.time_delivery = new_estimated_delivery
+            order.delivery_time += new_estimated_delivery
             order.save()
 
 
             report = DelayReport(order=order)
             report.save()
 
-            return JsonResponse({'message': 'Order updated with new estimated time and the report has been submitted', 'new_estimated_time':new_estimated_delivery, 'report_id':report.id}, status=201)
+            return JsonResponse({'message': f'Order updated with new estimated time and the report has been submitted. Your order will arrive at {order.time_stamp + timedelta(minutes=order.delivery_time)}', 'new_estimated_time':new_estimated_delivery, 'report_id':report.id}, status=201)
         else:
             return JsonResponse({'message': 'Failed to get new estimated time'}, status=500)
         
@@ -58,36 +54,50 @@ def report_delay(request, order_id):
     else:
         report = DelayReport(order=order)
         report.save()
+        
+        if order.status != 'INVESTIGATING':
+            order.status = 'DELAYED'
+            order.save()
 
-        # Enqueue the delay report to the delays_queue
-        delays_queue.enqueue(queue_name, report.id)
+        # Enqueue the delayed order to the delays_queue
+        delays_queue.enqueue(queue_name, order.id)
 
         return JsonResponse({'message': 'Order put in delay queue'})
     
 @api_view(['GET'])
 def weekly_vendors(request):
-    # Calculate the start and end date for the past week
-    end_date = timezone.now().date()
-    start_date = end_date - timedelta(days=7)
+    seven_days_ago = timezone.now() - timedelta(days=7)
 
-    # Subquery to calculate the maximum delay duration for each order of a vendor in the past week
-    total_delays_subquery = DelayReport.objects.filter(
-        order__time_stamp__range=(start_date, end_date),
-        order__delayreport__isnull=False
+    orders = Order.objects.filter(
+        time_stamp__gte=seven_days_ago
     ).annotate(
-        total_delay=ExpressionWrapper(
-            F('time_stamp') - (F('order__time_stamp') + F('order__delivery_time')),
-            output_field=DurationField()
+        delay_minutes=ExpressionWrapper(
+            Max(F('delayreport__time_stamp') - (F('time_stamp') + F('delivery_time'))),
+            output_field=FloatField()
         )
-    ).values('order__vendor').annotate(max_total_delay=Max('total_delay')).values('max_total_delay')
+    ).values('id', 'vendor__name', 'delay_minutes') 
 
-    # Get vendors with their maximum delays in the past week
-    vendors = Vendor.objects.filter(
-        order__delayreport__isnull=False
-    ).annotate(
-        max_total_delay=Subquery(total_delays_subquery)
-    ).order_by('-max_total_delay')
+    return JsonResponse({'orders': list(orders)})
+
+
+@api_view(['GET'])
+def assign_report(request,agent_id):
+
+    if Order.objects.filter(status='INVESTIGATING',agent_id=agent_id).exists():
+        return JsonResponse({'message':'This agent has already been assigned a report'},status=400)
     
-    serializer = VendorSerializer(vendors, many=True)
+    if delays_queue.count(queue_name) == 0:
+        return JsonResponse({'message': 'No reports available'}, status=200)
 
-    return JsonResponse({'message': 'Successful', 'data': serializer.data}, status=200)
+    
+    try:
+        order_id = delays_queue.dequeue(queue_name)
+        order = Order.objects.get(id=order_id)
+        order.status = 'INVESTIGATING'
+        order.agent_id = agent_id
+        order.save()
+
+        return JsonResponse({'message':'Delayed order assigned succesfully','order_id':order.id})
+
+    except DelayReport.DoesNotExist:
+        return JsonResponse({'message': 'No such order exists'}, status=404)

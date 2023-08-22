@@ -23,3 +23,6 @@ class RedisQueue(metaclass=Singleton):
     
     def exists(self, queue_name, item):
         return self.redis_client.exists(queue_name, item)
+    
+    def keys(self,queue_name):
+        return self.redis_client.keys(queue_name)

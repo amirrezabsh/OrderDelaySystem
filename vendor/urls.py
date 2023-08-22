@@ -3,5 +3,7 @@ from vendor import views
 
 urlpatterns = [
     path('report-delay/<int:order_id>/', views.report_delay, name='report_delay'),
-    path('weekly-vendors/', views.weekly_vendors, name='weekly_vendors')
+    path('weekly-vendors/', views.weekly_vendors, name='weekly_vendors'),
+    path('assign-report/<int:agent_id>/', views.assign_report, name='assign_report'),
+
 ]

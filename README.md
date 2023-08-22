@@ -28,8 +28,8 @@ These instructions will help you get a copy of the project up and running on you
 ### Installation
 1. Clone the repository:
 ```sh
-   git clone https://github.com/your-username/your-django-project.git
-   cd your-django-project
+   git clone https://github.com/amirrezabsh/OrderDelaySystem.git
+   cd OrderDelaySystem
 ```
 2. Create a virtual environment and activate it:
 ```sh

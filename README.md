@@ -59,7 +59,12 @@ You can access through the app using endpoints below. Note that all of these end
 Note: For simplicity `<agent_id>` is just for distincting agents from each other and there is no authentication mechanism for agents.
 
 ### Running with Docker
-Just run the command below:
+1. Use the docker build command to build your Django image:
+```sh
+docker build -t your_django_image -f Dockerfile .
+```
+Replace your_django_image with a meaningful name for your Django image.
+2. Once your Django image is built, you can use docker-compose to start your containers:
 ```sh
 docker-compose up
 ```

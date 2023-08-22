@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+  web:
+    image: python:3.11
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./OrderDelaySystem/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=OrderDelaySystem.settings
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"

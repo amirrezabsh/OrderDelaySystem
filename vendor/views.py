@@ -22,7 +22,7 @@ def report_delay(request, order_id):
         return JsonResponse({'message': 'Order not found'}, status=404)
     
     current_time = timezone.now()
-    if timedelta(minutes=order.delivery_time) + order.time_stamp > current_time:
+    if timedelta(minutes=(order.delivery_time + order.eta)) + order.time_stamp > current_time:
         return JsonResponse({'message': 'Cannot report delay before the estimated delivery time has passed','time':timezone.now()}, status=400)
 
     exists_in_queue = delays_queue.exists(queue_name, order_id)
@@ -38,7 +38,7 @@ def report_delay(request, order_id):
             new_estimated_delivery = response.json().get('data').get('eta')
 
             # Update the order with the new estimated delivery time
-            order.delivery_time += new_estimated_delivery
+            order.eta += new_estimated_delivery
             order.save()
 
 
@@ -78,7 +78,7 @@ def weekly_vendors(request):
         
         ).annotate(
         delay_duration=ExpressionWrapper(
-        (F('max_delay') - F('time_stamp'))/60000000 - F('delivery_time'), output_field=FloatField()
+        (F('max_delay') - F('time_stamp'))/60000000 - (F('delivery_time') + F('eta')), output_field=FloatField()
         )).values('id','time_stamp','max_delay','delay_duration').order_by('delay_duration')#.annotate(
         # delay_duration=ExpressionWrapper( 
         # F('delay_duration') - F('delivery_time'), output_field=DurationField()

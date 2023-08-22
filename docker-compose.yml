@@ -1,19 +1,20 @@
 version: '3'
-
 services:
+  # Django web application
   web:
-    image: python:3.11
+    image: order-delay-system
+    container_name: django_app
     command: python manage.py runserver 0.0.0.0:8000
-    volumes:
-      - ./OrderDelaySystem/app
     ports:
       - "8000:8000"
-    environment:
-      - DJANGO_SETTINGS_MODULE=OrderDelaySystem.settings
     depends_on:
       - redis
 
+  # Redis server for caching
   redis:
     image: redis:latest
+    container_name: redis_cache
     ports:
       - "6379:6379"
+
+  # Other services like database, worker, etc. can be added here

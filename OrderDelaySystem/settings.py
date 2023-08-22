@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'vendor',
+    'order'
 ]
 REDIS_UTILS_MODULE = 'OrderDelaySystem.redis_utils'
 MIDDLEWARE = [

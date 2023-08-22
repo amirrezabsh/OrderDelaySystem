@@ -3,6 +3,7 @@ from .models import Vendor
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models.functions import Cast, Coalesce
+from collections import defaultdict
 class VendorService:
     @staticmethod
     # Service to get the list of vendors ordered by their total delays for the past week
@@ -18,5 +19,20 @@ class VendorService:
             ),
             
         ).filter(total_delay_duration__isnull=False).values('id', 'name', 'total_delay_duration')
-        print(vendors_data)
-        return list(vendors_data)
+
+        # Group by vendor ID and sum total_delay_duration
+        vendors_data = list(vendors_data)
+
+        # Create a defaultdict to store the sums for each ID
+        sums_by_id = defaultdict(float)
+
+        # Iterate through the list and calculate sums
+        for item in vendors_data:
+            id_value = item['id']
+            value = item['total_delay_duration']
+            sums_by_id[id_value] += value
+
+        # Convert the defaultdict to a list of dictionaries
+        result_list = [{'id': id_value, 'total_delay_duration_sum': sum_value} for id_value, sum_value in sums_by_id.items()]
+
+        return result_list

@@ -22,8 +22,7 @@ class WeeklyVendorsTestCase(TestCase):
         response = self.client.get('/api/vendor/weekly-vendors/')
         vendor_data = response.data['orders'][0]
         self.assertEqual(vendor_data['id'], self.vendor.id)
-        self.assertEqual(vendor_data['name'], self.vendor.name)
-        self.assertGreaterEqual(vendor_data['total_delay_duration'], 20.0)
+        self.assertGreaterEqual(vendor_data['total_delay_duration_sum'], 20.0)
 
     def test_weekly_vendors_without_delay_report(self):
         self.delay_report.delete()  # Delete the delay report

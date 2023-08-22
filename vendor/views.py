@@ -4,16 +4,16 @@ import requests
 from django.db.models import OuterRef, Subquery, Count, Sum, DecimalField, Q, ExpressionWrapper, IntegerField, DurationField, F, Max, FloatField, DateTimeField
 from .models import Vendor
 from order.models import DelayReport
-from redis_utils import RedisQueue
+from redis_utils import RedisQueue, QueueNames
 from datetime import datetime, timedelta
-from .serializers import VendorSerializer
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from django.utils import timezone
 from django.db.models.functions import Cast, Coalesce
+
 # Get the singleton instance of DelaysQueue
 delays_queue = RedisQueue()
-queue_name = 'delays'
+queue_name = QueueNames.DELAYS
 
 
 @api_view(['GET'])

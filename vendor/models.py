@@ -5,6 +5,6 @@ from django.utils import timezone
 
 
 class Vendor(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100) # Vendor name
 
  

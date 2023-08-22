@@ -1,4 +1,8 @@
 import redis
+
+class QueueNames:
+    DELAYS = 'delays'
+    
 class Singleton(type):
     _instances = {}
 

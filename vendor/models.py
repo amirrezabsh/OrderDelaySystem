@@ -15,7 +15,7 @@ class Order(models.Model):
         ('FOLLOWING_UP', 'Following Up'),
         ('DONE','Done'),
         ('OPEN', 'Open')
-    ]
+    ] 
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE,blank=False,null=False)
     agent_id = models.IntegerField(null=True,blank=True)
     status = models.CharField(max_length=20,choices=STATUS_CHOICES,default='OPEN')

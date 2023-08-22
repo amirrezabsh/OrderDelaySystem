@@ -70,22 +70,27 @@ def weekly_vendors(request):
     seven_days_ago = timezone.now() - timedelta(days=7)
     delay = DelayReport.objects.get(id=26)
     print((delay.time_stamp - delay.order.time_stamp).total_seconds())
-    orders = Order.objects.filter(
-        time_stamp__gte=seven_days_ago
-    ).annotate(
-        max_delay=ExpressionWrapper(
-            Max(F('delayreport__time_stamp')),output_field=DateTimeField()),
+
+    vendors_data = Vendor.objects.annotate(
+        latest_delay_report_time=Max('order__delayreport__time_stamp', filter=Q(order__time_stamp__gte=seven_days_ago)),
+        total_delay_duration=ExpressionWrapper(
+            (F('latest_delay_report_time') - F('order__time_stamp')) / 60000000 - (F('order__delivery_time') + F('order__eta')),
+            output_field=FloatField()
+        )
+    ).values('id', 'name', 'total_delay_duration')
+    # orders = Order.objects.filter(
+    #     time_stamp__gte=seven_days_ago
+    # ).annotate(
+    #     max_delay=ExpressionWrapper(
+    #         Max(F('delayreport__time_stamp')),output_field=DateTimeField()),
         
-        ).annotate(
-        delay_duration=ExpressionWrapper(
-        (F('max_delay') - F('time_stamp'))/60000000 - (F('delivery_time') + F('eta')), output_field=FloatField()
-        )).values('id','time_stamp','max_delay','delay_duration').order_by('delay_duration')#.annotate(
-        # delay_duration=ExpressionWrapper( 
-        # F('delay_duration') - F('delivery_time'), output_field=DurationField()
-        # )).values('id','time_stamp','max_delay','delay_duration').order_by('delay_duration')
- 
-    print(orders)
-    return JsonResponse({'orders': list(orders)})
+    #     ).annotate(
+    #     delay_duration=ExpressionWrapper(
+    #     (F('max_delay') - F('time_stamp'))/60000000 - (F('delivery_time') + F('eta')), output_field=FloatField()
+    #     )).values('id','time_stamp','max_delay','delay_duration').order_by('delay_duration')#.annotate(
+
+    # print(orders)
+    return JsonResponse({'orders': list(vendors_data)})
 
 
 @api_view(['GET'])

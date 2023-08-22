@@ -20,6 +20,7 @@ class Order(models.Model):
     agent_id = models.IntegerField(null=True,blank=True)
     status = models.CharField(max_length=20,choices=STATUS_CHOICES,default='OPEN')
     delivery_time = models.PositiveIntegerField(blank=False,null=False)
+    eta = models.IntegerField(default=0)
     time_stamp = models.DateTimeField(default=timezone.now()) # Instead of auto_now_add=True used default=timezone.now() for simplicity
 
 

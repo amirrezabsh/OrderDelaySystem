@@ -5,9 +5,11 @@ from datetime import timedelta
 
 class VendorService:
     @staticmethod
+    # Service to get the list of vendors ordered by their total delays for the past week
     def get_weekly_vendors_data():
         seven_days_ago = timezone.now() - timedelta(days=7)
         
+        # The main query to get list of vendors
         vendors_data = Vendor.objects.annotate(
             latest_delay_report_time=Max('order__delayreport__time_stamp', filter=Q(order__time_stamp__gte=seven_days_ago)),
             total_delay_duration=ExpressionWrapper(

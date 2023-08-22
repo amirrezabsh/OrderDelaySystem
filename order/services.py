@@ -10,6 +10,7 @@ queue_name = QueueNames.DELAYS
 
 class DelayService:
     @staticmethod
+    # A service to report delay for the client
     def report_delay(order_id):
         try:
             order = Order.objects.get(id=order_id)
@@ -46,14 +47,18 @@ class DelayService:
 
 class AssignmentService:
     @staticmethod
+    # A service to assign a report to an agent
     def assign_report(agent_id):
+        # Check if the agent has already been assigned a report
         if Order.objects.filter(status=OrderStatus.INVESTIGATING, agent_id=agent_id).exists():
             return 'This agent has already been assigned a report', 400
         
+        # Check if the delays queue is empty
         if delays_queue.count(queue_name) == 0:
             return 'No reports available', 200
         
         try:
+            # Assigning an order to the agent
             order_id = delays_queue.dequeue(queue_name)
             order = Order.objects.get(id=order_id)
             order.status = OrderStatus.INVESTIGATING

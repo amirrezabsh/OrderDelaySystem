@@ -1,3 +1,4 @@
+# Order status class
 class OrderStatus:
     DELAYED = 'DELAYED'
     INVESTIGATING = 'INVESTIGATING'
@@ -5,6 +6,7 @@ class OrderStatus:
     DONE = 'DONE'
     OPEN = 'OPEN'
 
+# Trip status class
 class TripStatus:
     DELIVERED = 'DELIVERED'
     PICKED = 'PICKED'

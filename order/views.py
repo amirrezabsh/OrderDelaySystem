@@ -6,6 +6,7 @@ delay_service = DelayService()
 assignment_service = AssignmentService()
 
 
+# API call to report delay by the user
 @api_view(['GET'])
 def report_delay(request, order_id):
     message, status_code, new_estimated_time = delay_service.report_delay(order_id)
@@ -16,6 +17,7 @@ def report_delay(request, order_id):
 
     return JsonResponse(response_data, status=status_code)
 
+# API call to assign a reported delay to an agent
 @api_view(['GET'])
 def assign_report(request, agent_id):
     message, status_code = assignment_service.assign_report(agent_id)
